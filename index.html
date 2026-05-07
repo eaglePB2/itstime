@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>It's almost...</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #999;
+            text-align: center;
+            background: #fff;
+            margin: 0;
+            font-weight: 300;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 30px;
+            color: #999;
+        }
+
+        .highlight { color: #888; font-weight: bold; }
+        .hidden { display: none !important; }
+
+        input[type="text"], input[type="number"], input[type="url"] {
+            font-size: 48px;
+            font-family: inherit;
+            color: #888;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px 15px;
+            outline: none;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+            transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        
+        #event-name { width: 300px; margin-bottom: 20px; }
+        #event-logo-input { width: 400px; font-size: 24px; padding: 10px; display: block; margin: 0 auto 20px auto; }
+        
+        input:focus {
+            border-color: #66afe9;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 12px rgba(102, 175, 233, .6);
+        }
+
+        .input-group {
+            font-size: 32px;
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group input[type="text"] { font-size: 32px; width: 180px; }
+        .input-group input[type="number"] { font-size: 32px; width: 70px; }
+        
+        .input-label { font-size: 24px; color: #aaa; margin-right: 15px; }
+        
+        .divider {
+            margin: 30px 0;
+            font-size: 20px;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            width: 100px;
+            height: 1px;
+            background: #eee;
+        }
+        .divider::before { left: -120px; }
+        .divider::after { right: -120px; }
+
+        select {
+            font-size: 32px;
+            padding: 5px;
+            color: #888;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+
+        button {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(to bottom, #b8b8b8, #9e9e9e);
+            border: 1px solid #888;
+            border-radius: 4px;
+            padding: 15px 40px;
+            cursor: pointer;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+        button:hover { background: linear-gradient(to bottom, #a8a8a8, #8e8e8e); }
+
+        .stream-logo {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .countdown-display {
+            font-size: 42px;
+            color: #999;
+            margin-top: 30px;
+        }
+        .countdown-display span {
+            color: #888;
+            font-weight: bold;
+        }
+        .ms { font-size: 24px; color: #aaa; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-mode">
+        <input type="url" id="event-logo-input" placeholder="Logo Image URL (Optional)">
+        
+        <h1>It's almost <input type="text" id="event-name" value="beer 'o clock"></h1>
+        
+        <div class="input-group">
+            <span class="input-label">on</span>
+            <input type="text" id="event-date" placeholder="MM/DD/YYYY">
+            <span class="input-label">at</span>
+            <input type="number" id="event-hour" min="1" max="12" value="5">
+            : <input type="number" id="event-min" min="0" max="59" value="30">
+            <select id="event-ampm">
+                <option value="AM">AM</option>
+                <option value="PM" selected>PM</option>
+            </select>
+        </div>
+
+        <div class="divider">or in</div>
+
+        <div class="input-group">
+            <input type="number" id="rel-days" min="0" placeholder="0"> <span class="input-label">days</span>
+            <input type="number" id="rel-hours" min="0" placeholder="0"> <span class="input-label">hrs</span>
+            <input type="number" id="rel-mins" min="0" placeholder="5"> <span class="input-label">mins</span>
+            <input type="number" id="rel-secs" min="0" placeholder="0"> <span class="input-label">secs</span>
+        </div>
+
+        <button onclick="startCountdown()">start the countdown</button>
+    </div>
+
+    <div id="countdown-mode" class="hidden">
+        <img id="display-logo" class="stream-logo hidden" alt="Event Logo">
+        <h1>It's almost <span id="display-name" class="highlight"></span></h1>
+        <div class="countdown-display" id="timer-display"></div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventName = urlParams.get('n');
+        const targetTime = parseInt(urlParams.get('t'), 10);
+        const logoUrl = urlParams.get('logo');
+
+        if (eventName && !isNaN(targetTime)) {
+            initCountdownMode(eventName, targetTime, logoUrl);
+        } else {
+            initSetupMode();
+        }
+
+        function initSetupMode() {
+            const today = new Date();
+            document.getElementById('event-date').value = 
+                `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+        }
+
+        function startCountdown() {
+            const name = document.getElementById('event-name').value.trim() || 'something';
+            const rawLogo = document.getElementById('event-logo-input').value.trim();
+            
+            // 提取相对时间的输入值
+            const rDays = parseInt(document.getElementById('rel-days').value, 10) || 0;
+            const rHours = parseInt(document.getElementById('rel-hours').value, 10) || 0;
+            const rMins = parseInt(document.getElementById('rel-mins').value, 10) || 0;
+            const rSecs = parseInt(document.getElementById('rel-secs').value, 10) || 0;
+
+            // 计算相对时间的总毫秒数
+            const totalRelativeMs = ((rDays * 24 * 3600) + (rHours * 3600) + (rMins * 60) + rSecs) * 1000;
+
+            let timestamp;
+
+            // 核心逻辑：如果用户填了相对时间，优先使用它
+            if (totalRelativeMs > 0) {
+                timestamp = new Date().getTime() + totalRelativeMs;
+            } else {
+                // 否则退回到使用绝对日期
+                const dateStr = document.getElementById('event-date').value;
+                let hour = parseInt(document.getElementById('event-hour').value, 10);
+                const min = parseInt(document.getElementById('event-min').value, 10);
+                const ampm = document.getElementById('event-ampm').value;
+
+                if (!dateStr) return alert("Fill in either a date or a duration. Don't leave it blank.");
+
+                if (ampm === 'PM' && hour !== 12) hour += 12;
+                if (ampm === 'AM' && hour === 12) hour = 0;
+
+                timestamp = new Date(`${dateStr} ${hour}:${min}:00`).getTime();
+            }
+
+            if (isNaN(timestamp)) return alert("Invalid date or duration.");
+
+            // 永远输出统一的绝对时间戳 URL，保持完美向后兼容
+            let redirectUrl = `?n=${encodeURIComponent(name)}&t=${timestamp}`;
+            if (rawLogo) redirectUrl += `&logo=${encodeURIComponent(rawLogo)}`;
+
+            window.location.href = redirectUrl;
+        }
+
+        // 倒计时核心渲染逻辑保持原样，因为数据结构没变
+        function initCountdownMode(name, targetMs, logoUrl) {
+            document.getElementById('setup-mode').classList.add('hidden');
+            document.getElementById('countdown-mode').classList.remove('hidden');
+            document.getElementById('display-name').textContent = name;
+
+            if (logoUrl) {
+                const logoImg = document.getElementById('display-logo');
+                logoImg.src = logoUrl;
+                logoImg.classList.remove('hidden');
+            }
+
+            const timerDisplay = document.getElementById('timer-display');
+
+            function updateTimer() {
+                const now = new Date().getTime();
+                const diff = targetMs - now;
+
+                if (diff <= 0) {
+                    timerDisplay.innerHTML = "<span>It is time.</span>";
+                    return;
+                }
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((diff % (1000 * 60)) / 1000);
+                const ms = Math.floor((diff % 1000));
+
+                let html = '';
+                if (d > 0) html += `<span>${d}</span> days `;
+                if (d > 0 || h > 0) html += `<span>${h}</span> hours `;
+                if (d > 0 || h > 0 || m > 0) html += `<span>${m}</span> minutes `;
+                html += `<span>${s}</span> seconds <span class="ms">${ms.toString().padStart(3, '0')}</span>`;
+
+                timerDisplay.innerHTML = html;
+                requestAnimationFrame(updateTimer);
+            }
+            requestAnimationFrame(updateTimer);
+        }
+    </script>
+</body>
+</html>
